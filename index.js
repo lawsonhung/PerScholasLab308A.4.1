@@ -14,7 +14,41 @@ const getFavouritesBtn = document.getElementById("getFavouritesBtn");
 const API_KEY =
   "live_TiumUOytz4RSTtLgK7pC7yxVGJlJbXbthbpL2rWQ3eMjnl7MyPX8xuXSUAw9dyZT";
 
-let catURL = "https://api.thecatapi.com/v1";
+let baseCatURL = "https://api.thecatapi.com/v1";
+
+axios.interceptors.request.use((request) => {
+  request.metadata = request.metadata || {};
+  request.metadata.startTime = new Date().getTime();
+  const dateObj = new Date(request.metadata.startTime);
+
+  // Log request start time in ISO format ===============================
+  console.log("Request started at ", dateObj.toISOString());
+  return request;
+});
+axios.interceptors.response.use(
+  (response) => {
+    response.config.metadata.endTime = new Date().getTime();
+    const dateObj = new Date(response.config.metadata.endTime);
+
+    // Log request response time in ISO format ==========================
+    console.log("Request response received at ", dateObj.toISOString());
+    response.durationInMS =
+      response.config.metadata.endTime - response.config.metadata.startTime;
+    console.log(`Response received in ${response.durationInMS} ms`);
+    return response;
+  },
+  (error) => {
+    error.config.metadata.endTime = new Date().getTime();
+    const dateObj = new Date(err.config.metadata.endTime);
+
+    // Log error timed out in ISO format ================================
+    console.log("Errored out at ", dateObj.toISOString());
+    error.durationInMS =
+      error.config.metadata.endTime - error.config.metadata.startTime;
+    console.log(`Errored out in ${error.durationInMS} ms`);
+    throw error;
+  }
+);
 /**
  * 1. Create an async function "initialLoad" that does the following:
  * - Retrieve a list of breeds from the cat API using fetch().
@@ -24,9 +58,9 @@ let catURL = "https://api.thecatapi.com/v1";
  * This function should execute immediately.
  */
 (async function initialLoad() {
-  const url = `${catURL}/breeds`;
-  let breeds = await fetch(url);
-  breeds = await breeds.json();
+  const url = `${baseCatURL}/breeds`;
+  let breeds = await axios(url);
+  breeds = await breeds.data;
 
   breeds.forEach((breed) => {
     let optionEl = document.createElement("option");
@@ -54,10 +88,10 @@ let catURL = "https://api.thecatapi.com/v1";
  * - Add a call to this function to the end of your initialLoad function above to create the initial carousel.
  */
 async function handleBreedSelect(e) {
-  const url = `${catURL}/images/search?breed_ids=${e.target.value}`;
+  const url = `${baseCatURL}/images/search?breed_ids=${e.target.value}`;
 
-  let breedInfo = await fetch(url);
-  breedInfo = await breedInfo.json();
+  let breedInfo = await axios(url);
+  breedInfo = await breedInfo.data;
 
   let selectedOption = this.selectedOptions[0];
 
@@ -70,11 +104,12 @@ async function handleBreedSelect(e) {
       e.id
     );
     Carousel.appendCarousel(carouselItem);
-
-    let parEl = document.createElement("p");
-    parEl.textContent = selectedOption.dataset.description;
-    infoDump.append(parEl);
   });
+
+  let parEl = document.createElement("p");
+  parEl.textContent = selectedOption.dataset.description;
+  infoDump.innerHTML = "";
+  infoDump.append(parEl);
 
   Carousel.start();
 }
