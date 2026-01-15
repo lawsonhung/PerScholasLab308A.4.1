@@ -23,6 +23,8 @@ axios.interceptors.request.use((request) => {
 
   // Log request start time in ISO format ===============================
   console.log("Request started at ", dateObj.toISOString());
+
+  progressBar.style.width = "0%";
   return request;
 });
 axios.interceptors.response.use(
@@ -92,7 +94,10 @@ axios.interceptors.response.use(
 async function handleBreedSelect(e) {
   const url = `${baseCatURL}/images/search?breed_ids=${e.target.value}`;
 
-  let breedInfo = await axios(url);
+  let breedInfo = await axios(url, {
+    onDownloadProgress: updateProgress,
+  });
+
   breedInfo = await breedInfo.data;
 
   let selectedOption = this.selectedOptions[0];
@@ -151,6 +156,13 @@ async function handleBreedSelect(e) {
  *   once or twice per request to this API. This is still a concept worth familiarizing yourself
  *   with for future projects.
  */
+function updateProgress(progressEventObj) {
+  progressEventObj.total = progressEventObj.total || progressEventObj.bytes;
+  const percentCompleted = Math.round(
+    (progressEventObj.loaded * 100) / progressEventObj.total
+  );
+  progressBar.style.width = `${percentCompleted}%`;
+}
 
 /**
  * 7. As a final element of progress indication, add the following to your axios interceptors:
