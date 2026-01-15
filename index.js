@@ -25,6 +25,7 @@ axios.interceptors.request.use((request) => {
   console.log("Request started at ", dateObj.toISOString());
 
   progressBar.style.width = "0%";
+  document.body.style.cursor = "progress";
   return request;
 });
 axios.interceptors.response.use(
@@ -37,6 +38,9 @@ axios.interceptors.response.use(
     response.durationInMS =
       response.config.metadata.endTime - response.config.metadata.startTime;
     console.log(`Response received in ${response.durationInMS} ms`);
+
+    document.body.style.cursor = "auto";
+
     return response;
   },
   (error) => {
@@ -48,6 +52,9 @@ axios.interceptors.response.use(
     error.durationInMS =
       error.config.metadata.endTime - error.config.metadata.startTime;
     console.log(`Errored out in ${error.durationInMS} ms`);
+
+    document.body.style.cursor = "auto";
+
     throw error;
   }
 );
