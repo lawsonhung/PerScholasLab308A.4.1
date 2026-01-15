@@ -68,7 +68,11 @@ axios.interceptors.response.use(
  */
 (async function initialLoad() {
   const url = `${baseCatURL}/breeds`;
-  let breeds = await axios(url);
+  let breeds = await axios(url, {
+    headers: {
+      "x-api-key": API_KEY,
+    },
+  });
   breeds = await breeds.data;
 
   console.log("initial load ran");
@@ -102,6 +106,9 @@ async function handleBreedSelect(e) {
   const url = `${baseCatURL}/images/search?breed_ids=${e.target.value}`;
 
   let breedInfo = await axios(url, {
+    headers: {
+      "x-api-key": API_KEY,
+    },
     onDownloadProgress: updateProgress,
   });
 
