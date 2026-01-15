@@ -14,38 +14,53 @@ const getFavouritesBtn = document.getElementById("getFavouritesBtn");
 const API_KEY =
   "live_TiumUOytz4RSTtLgK7pC7yxVGJlJbXbthbpL2rWQ3eMjnl7MyPX8xuXSUAw9dyZT";
 
-let baseCatURL = "https://api.thecatapi.com/v1";
+// Axios defaults
+axios.defaults.baseURL = "https://api.thecatapi.com/v1";
+axios.defaults.headers.common["x-api-key"] = API_KEY;
 
 axios.interceptors.request.use((request) => {
-  request.metadata = request.metadata || {};
-  request.metadata.startTime = new Date().getTime();
-  const dateObj = new Date(request.metadata.startTime);
+  try {
+    request.metadata = request.metadata || {};
+    request.metadata.startTime = new Date().getTime();
+    const dateObj = new Date(request.metadata.startTime);
 
-  // Log request start time in ISO format ===============================
-  console.log("Request started at ", dateObj.toISOString());
+    // Log request start time in ISO format ===============================
+    console.log("Request started at ", dateObj.toISOString());
 
-  progressBar.style.width = "0%";
-  document.body.style.cursor = "progress";
-  return request;
+    progressBar.style.width = "0%";
+    document.body.style.cursor = "progress";
+    console.log("Request.data", request.data);
+    console.log(`Making a ${request.method} request`);
+    return request;
+  } catch (err) {
+    console.err(`❌ request interceptor: ${err.message}`);
+  }
 });
 axios.interceptors.response.use(
   (response) => {
-    response.config.metadata.endTime = new Date().getTime();
-    const dateObj = new Date(response.config.metadata.endTime);
+    try {
+      console.log("response", response);
+      if (response.status !== 200)
+        throw new Error(`HTTP Error: ${response.status}`);
+      response.config.metadata.endTime = new Date().getTime();
+      const dateObj = new Date(response.config.metadata.endTime);
 
-    // Log request response time in ISO format ==========================
-    console.log("Request response received at ", dateObj.toISOString());
-    response.durationInMS =
-      response.config.metadata.endTime - response.config.metadata.startTime;
-    console.log(`Response received in ${response.durationInMS} ms`);
+      // Log request response time in ISO format ==========================
+      console.log("Request response received at ", dateObj.toISOString());
+      response.durationInMS =
+        response.config.metadata.endTime - response.config.metadata.startTime;
+      console.log(`Response received in ${response.durationInMS} ms`);
 
-    document.body.style.cursor = "auto";
+      document.body.style.cursor = "auto";
 
-    return response;
+      return response;
+    } catch (err) {
+      console.error(`❌ response interceptor: ${err.message}`);
+    }
   },
   (error) => {
     error.config.metadata.endTime = new Date().getTime();
-    const dateObj = new Date(err.config.metadata.endTime);
+    const dateObj = new Date(error.config.metadata.endTime);
 
     // Log error timed out in ISO format ================================
     console.log("Errored out at ", dateObj.toISOString());
@@ -67,11 +82,11 @@ axios.interceptors.response.use(
  * This function should execute immediately.
  */
 (async function initialLoad() {
-  const url = `${baseCatURL}/breeds`;
+  const url = "/breeds";
   let breeds = await axios(url, {
-    headers: {
-      "x-api-key": API_KEY,
-    },
+    // headers: {
+    //   "x-api-key": API_KEY,
+    // },
   });
   breeds = await breeds.data;
 
@@ -86,6 +101,7 @@ axios.interceptors.response.use(
   });
 
   breedSelect.addEventListener("change", handleBreedSelect);
+  getFavouritesBtn.addEventListener("click", getFavourites);
 })();
 
 /**
@@ -103,12 +119,12 @@ axios.interceptors.response.use(
  * - Add a call to this function to the end of your initialLoad function above to create the initial carousel.
  */
 async function handleBreedSelect(e) {
-  const url = `${baseCatURL}/images/search?breed_ids=${e.target.value}`;
+  const url = `/images/search?breed_ids=${e.target.value}`;
 
   let breedInfo = await axios(url, {
-    headers: {
-      "x-api-key": API_KEY,
-    },
+    // headers: {
+    //   "x-api-key": API_KEY,
+    // },
     onDownloadProgress: updateProgress,
   });
 
@@ -121,15 +137,15 @@ async function handleBreedSelect(e) {
   breedInfo.forEach((breed) => {
     let carouselItem = Carousel.createCarouselItem(
       breed.url,
-      e.target.value,
-      e.id
+      breed.breeds[0].alt_names,
+      breed.id
     );
     Carousel.appendCarousel(carouselItem);
   });
 
   let parEl = document.createElement("p");
   parEl.textContent = selectedOption.dataset.description;
-  console.log("parEl", parEl);
+  // console.log("parEl", parEl);
   infoDump.innerHTML = "";
   infoDump.append(parEl);
 
@@ -196,6 +212,58 @@ function updateProgress(progressEventObj) {
  */
 export async function favourite(imgId) {
   // your code here
+  const body = {
+    image_id: imgId,
+    sub_id: "1",
+  };
+
+  try {
+    const isFavourited = await getFavourite(imgId);
+    console.log("isFavourited", isFavourited);
+
+    // If isFavourited, deleteFavourite(imgId)
+    if (isFavourited) await deleteFavourite(imgId);
+    // else post body to /favourites
+    else {
+      let favId = await axios.post("/favourites", body);
+      favId = favId.data;
+      console.log("Posted a favourite", favId);
+    }
+
+    // console.log("favourite body object to post or delete", body);
+    // let favId = await axios.post("/favourites", body);
+    // console.log("favId response after posting", favId);
+    // if (!favId) throw new Error("favId does not exist");
+
+    // favId = await favId.data;
+  } catch (err) {
+    if (err.response) {
+      console.error("Server Error:", err.response.data);
+      console.error("Status Code:", err.response.status);
+      console.log("err.response", err.response);
+    } else if (err.request) {
+      console.error("Network Error:", err.request);
+    } else {
+      console.log("err is", err);
+      console.error(`❌ favourite(imgId) error: ${err.message}`);
+    }
+  }
+}
+
+async function getFavourite(favId) {
+  let favourite = await axios(`/favourites?image_id=${favId}`);
+  favourite = favourite.data;
+  console.log("favourite", favourite);
+  return !!favourite.length;
+}
+
+async function deleteFavourite(favId) {
+  try {
+    await axios.delete(`/favourites/${favId}`);
+  } catch (err) {
+    console.error(`❌ deleteFavourite error: ${err.message}`);
+    console.log(err);
+  }
 }
 
 /**
@@ -207,6 +275,18 @@ export async function favourite(imgId) {
  *    If that isn't in its own function, maybe it should be so you don't have to
  *    repeat yourself in this section.
  */
+async function getFavourites() {
+  let favourites = await axios("/favourites");
+  favourites = favourites.data;
+  console.log("favourites", favourites);
+}
+
+// JavaScript does not support overloading functions
+// async function getFavourites(favId) {
+//   let favourites = await axios(`/favourites?image_id=${favId}`);
+//   favourites = favourites.data;
+//   console.log("existing favourites", favourites);
+// }
 
 /**
  * 10. Test your site, thoroughly!
