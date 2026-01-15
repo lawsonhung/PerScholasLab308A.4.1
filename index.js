@@ -62,6 +62,8 @@ axios.interceptors.response.use(
   let breeds = await axios(url);
   breeds = await breeds.data;
 
+  console.log("initial load ran");
+
   breeds.forEach((breed) => {
     let optionEl = document.createElement("option");
     optionEl.value = breed.id;
@@ -108,6 +110,7 @@ async function handleBreedSelect(e) {
 
   let parEl = document.createElement("p");
   parEl.textContent = selectedOption.dataset.description;
+  console.log("parEl", parEl);
   infoDump.innerHTML = "";
   infoDump.append(parEl);
 
